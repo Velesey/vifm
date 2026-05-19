@@ -75,6 +75,8 @@ static void show_position_in_menu(const menu_data_t *m);
 static void open_selected_file(const char path[], int line_num);
 static void navigate_to_selected_file(view_t *view, const char path[]);
 static void draw_menu_item(menu_state_t *ms, int pos, int line, int clear);
+static void print_menu_item_tail(const char item_tail[], const char attrs_tail[],
+		const col_attr_t *col, int color_pair);
 static void draw_search_match(char str[], int start, int end, int line,
 		int width, const cchar_t *attrs);
 static void normalize_top(menu_state_t *ms);
@@ -144,6 +146,11 @@ menus_remove_current(menu_state_t *ms)
 
 	remove_from_string_array(m->items, m->len, m->pos);
 
+	if(m->item_attrs != NULL)
+	{
+		remove_from_string_array(m->item_attrs, m->len, m->pos);
+	}
+
 	if(m->data != NULL)
 	{
 		remove_from_string_array(m->data, m->len, m->pos);
@@ -193,6 +200,7 @@ menus_init_data(menu_data_t *m, view_t *view, char title[], char empty_msg[])
 	m->pos = 0;
 	m->hor_pos = 0;
 	m->items = NULL;
+	m->item_attrs = NULL;
 	m->data = NULL;
 	m->void_data = NULL;
 	m->key_handler = NULL;
@@ -255,6 +263,11 @@ deinit_menu_data(menu_data_t *m)
 	{
 		free_string_array(m->data, m->len);
 		m->data = NULL;
+	}
+	if(m->item_attrs != NULL)
+	{
+		free_string_array(m->item_attrs, m->len);
+		m->item_attrs = NULL;
 	}
 	free_string_array(m->items, m->len);
 	free(m->void_data);
@@ -477,6 +490,7 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	int i;
 	int off;
 	char *item_tail;
+	const char *attrs_tail = NULL;
 	const int width = (curr_stats.load_stage == 0) ? 100 : getmaxx(menu_win) - 2;
 
 	/* Calculate color for the line. */
@@ -504,6 +518,11 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 
 	item_tail = escaped + off;
 	replace_char(item_tail, '\t', ' ');
+	if(m->item_attrs != NULL && m->item_attrs[pos] != NULL)
+	{
+		const size_t attrs_len = strlen(m->item_attrs[pos]);
+		attrs_tail = m->item_attrs[pos] + MIN((size_t)m->hor_pos, attrs_len);
+	}
 
 	ui_set_attr(menu_win, &col, color_pair);
 
@@ -529,7 +548,7 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	}
 
 	checked_wmove(menu_win, line, 2);
-	wprint(menu_win, item_tail);
+	print_menu_item_tail(item_tail, attrs_tail, &col, color_pair);
 
 	if(ms->search_highlight && ms->matches != NULL && ms->matches[pos][0] >= 0)
 	{
@@ -539,6 +558,42 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	}
 
 	free(escaped);
+}
+
+/* Prints menu item tail applying optional muted attributes. */
+static void
+print_menu_item_tail(const char item_tail[], const char attrs_tail[],
+		const col_attr_t *col, int color_pair)
+{
+	if(attrs_tail == NULL)
+	{
+		wprint(menu_win, item_tail);
+		return;
+	}
+
+	const cchar_t base_attrs = cs_color_to_cchar(col, color_pair);
+	col_attr_t aux_col = *col;
+	cs_mix_colors(&aux_col, &cfg.cs.color[AUX_WIN_COLOR]);
+	aux_col.attr |= A_DIM;
+	aux_col.gui_attr |= A_DIM;
+	const cchar_t aux_attrs = cs_color_to_cchar(&aux_col, -1);
+
+	const char *line = item_tail;
+	const char *attrs = attrs_tail;
+	while(*line != '\0')
+	{
+		const size_t len = utf8_chrw(line);
+		char char_buf[len + 1U];
+		copy_str(char_buf, sizeof(char_buf), line);
+		wprinta(menu_win, char_buf, (*attrs == 'a' ? &aux_attrs : &base_attrs),
+				/*attrs_xors=*/0);
+
+		line += len;
+		if(*attrs != '\0')
+		{
+			++attrs;
+		}
+	}
 }
 
 /* Draws search match highlight on the element. */

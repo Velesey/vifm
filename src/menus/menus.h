@@ -52,6 +52,9 @@ typedef struct menu_data_t
 	char *title;  /* Title of the menu. */
 	char **items; /* Contains titles of all menu items. */
 
+	/* Contains optional per-screen-column item attributes. */
+	char **item_attrs;
+
 	/* Contains additional string data, associated with each of menu items, can be
 	 * NULL. */
 	char **data;
