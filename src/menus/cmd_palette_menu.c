@@ -22,7 +22,7 @@
 #include <stdint.h> /* intptr_t */
 #include <stdlib.h> /* free() */
 #include <string.h> /* strdup() strlen() */
-#include <wchar.h> /* wchar_t */
+#include <wchar.h> /* wchar_t wcscmp() */
 
 #include "../compat/reallocarray.h"
 #include "../engine/keys.h"
@@ -31,6 +31,7 @@
 #include "../modes/cmdline.h"
 #include "../modes/menu.h"
 #include "../modes/modes.h"
+#include "../modes/wk.h"
 #include "../ui/ui.h"
 #include "../bracket_notation.h"
 #include "../utils/macros.h"
@@ -54,7 +55,7 @@ PaletteAction;
 
 static int execute_cmd_palette_cb(view_t *view, menu_data_t *m);
 static int count_custom_commands(char *list[]);
-static int append_item(menu_data_t *m, char item[], char action[],
+static int append_source_item(char item[], char action[],
 		PaletteAction type);
 static int append_builtin_commands(menu_data_t *m, size_t cmdname_width);
 static int append_custom_commands(menu_data_t *m, char *list[],
@@ -62,9 +63,21 @@ static int append_custom_commands(menu_data_t *m, char *list[],
 static size_t calc_cmdname_width(char *custom_cmds[]);
 static void append_key_action(const wchar_t lhs[], const wchar_t rhs[],
 		const char descr[]);
+static KHandlerResponse cmd_palette_khandler(view_t *view, menu_data_t *m,
+		const wchar_t keys[]);
+static int filter_cmd_palette(menu_data_t *m, const char pattern[]);
+static int append_filtered_item(menu_data_t *m, int index);
+static void clear_menu_items(menu_data_t *m);
+static void reset_source_items(void);
+static void cleanup_cmd_palette(menu_data_t *m);
+static int item_matches(const char item[], const char pattern[]);
 
 /* Menu object is global to make it available in append_key_action(). */
 static menu_data_t m;
+static char **source_items;
+static char **source_data;
+static void **source_void_data;
+static int source_len;
 
 int
 show_cmd_palette_menu(view_t *view)
@@ -73,9 +86,14 @@ show_cmd_palette_menu(view_t *view)
 	const int custom_count = count_custom_commands(custom_cmds);
 	size_t cmdname_width = calc_cmdname_width(custom_cmds);
 
+	reset_source_items();
+
 	menus_init_data(&m, view, strdup("Command Palette"),
 			strdup("No commands available"));
 	m.execute_handler = &execute_cmd_palette_cb;
+	m.key_handler = &cmd_palette_khandler;
+	m.filter_handler = &filter_cmd_palette;
+	m.cleanup_handler = &cleanup_cmd_palette;
 
 	if(append_builtin_commands(&m, cmdname_width) != 0 ||
 			append_custom_commands(&m, custom_cmds, cmdname_width) != 0)
@@ -86,6 +104,10 @@ show_cmd_palette_menu(view_t *view)
 	custom_cmds = NULL;
 
 	vle_keys_list(NORMAL_MODE, &append_key_action, /*user_only=*/0);
+	if(filter_cmd_palette(&m, "") != 0)
+	{
+		goto fail;
+	}
 
 	if(menus_enter(&m, view) != 0)
 	{
@@ -93,8 +115,7 @@ show_cmd_palette_menu(view_t *view)
 	}
 
 	menu_data_t *const current = modmenu_get_current();
-	menus_search_reset(current->state, /*backward=*/0, /*new_repeat_count=*/1);
-	modcline_in_menu(CLS_MENU_FSEARCH, /*initial=*/"", current);
+	modcline_in_menu(CLS_MENU_FILTER, /*initial=*/"", current);
 	return 0;
 
 fail:
@@ -108,6 +129,11 @@ fail:
 static int
 execute_cmd_palette_cb(view_t *view, menu_data_t *m)
 {
+	if(m->len == 0)
+	{
+		return 1;
+	}
+
 	const char *const action = m->data[m->pos];
 	const PaletteAction type = (intptr_t)m->void_data[m->pos];
 
@@ -173,43 +199,44 @@ calc_cmdname_width(char *custom_cmds[])
 
 /* Adds item to the menu.  Takes ownership of item and action on success. */
 static int
-append_item(menu_data_t *m, char item[], char action[], PaletteAction type)
+append_source_item(char item[], char action[], PaletteAction type)
 {
 	char **items;
 	char **data;
 	void **void_data;
 
-	items = reallocarray(m->items, m->len + 1, sizeof(*m->items));
+	items = reallocarray(source_items, source_len + 1, sizeof(*source_items));
 	if(items == NULL)
 	{
 		free(item);
 		free(action);
 		return 1;
 	}
-	m->items = items;
+	source_items = items;
 
-	data = reallocarray(m->data, m->len + 1, sizeof(*m->data));
+	data = reallocarray(source_data, source_len + 1, sizeof(*source_data));
 	if(data == NULL)
 	{
 		free(item);
 		free(action);
 		return 1;
 	}
-	m->data = data;
+	source_data = data;
 
-	void_data = reallocarray(m->void_data, m->len + 1, sizeof(*m->void_data));
+	void_data = reallocarray(source_void_data, source_len + 1,
+			sizeof(*source_void_data));
 	if(void_data == NULL)
 	{
 		free(item);
 		free(action);
 		return 1;
 	}
-	m->void_data = void_data;
+	source_void_data = void_data;
 
-	m->items[m->len] = item;
-	m->data[m->len] = action;
-	m->void_data[m->len] = (void *)(intptr_t)type;
-	++m->len;
+	source_items[source_len] = item;
+	source_data[source_len] = action;
+	source_void_data[source_len] = (void *)(intptr_t)type;
+	++source_len;
 	return 0;
 }
 
@@ -234,7 +261,7 @@ append_builtin_commands(menu_data_t *m, size_t cmdname_width)
 			type |= PA_NEEDS_ARGS;
 		}
 
-		if(append_item(m, item, action, type) != 0)
+		if(append_source_item(item, action, type) != 0)
 		{
 			return 1;
 		}
@@ -258,7 +285,7 @@ append_custom_commands(menu_data_t *m, char *list[], size_t cmdname_width)
 				list[i + 1]);
 		char *const action = strdup(list[i]);
 
-		if(append_item(m, item, action, PA_COMMAND) != 0)
+		if(append_source_item(item, action, PA_COMMAND) != 0)
 		{
 			return 1;
 		}
@@ -282,10 +309,138 @@ append_key_action(const wchar_t lhs[], const wchar_t rhs[], const char descr[])
 	}
 
 	char *const item = format_str("%-*s %s", KEY_COLUMN_MIN_WIDTH, keys, descr);
-	if(append_item(&m, item, keys, PA_KEYS) != 0)
+	if(append_source_item(item, keys, PA_KEYS) != 0)
 	{
 		return;
 	}
+}
+
+/* Menu-specific shortcut handler. */
+static KHandlerResponse
+cmd_palette_khandler(view_t *view, menu_data_t *m, const wchar_t keys[])
+{
+	(void)view;
+
+	if(wcscmp(keys, WK_DELETE) == 0 || wcscmp(keys, WK_C_h) == 0)
+	{
+		if(filter_cmd_palette(m, "") == 0)
+		{
+			menus_partial_redraw(m->state);
+			menus_set_pos(m->state, 0);
+			return KHR_REFRESH_WINDOW;
+		}
+	}
+
+	return KHR_UNHANDLED;
+}
+
+/* Filters visible menu items by a case-insensitive substring. */
+static int
+filter_cmd_palette(menu_data_t *m, const char pattern[])
+{
+	int i;
+
+	clear_menu_items(m);
+
+	for(i = 0; i < source_len; ++i)
+	{
+		if(item_matches(source_items[i], pattern) &&
+				append_filtered_item(m, i) != 0)
+		{
+			return 1;
+		}
+	}
+
+	m->top = 0;
+	m->pos = 0;
+	m->hor_pos = 0;
+	return 0;
+}
+
+/* Appends a copy of a source item to the visible menu. */
+static int
+append_filtered_item(menu_data_t *m, int index)
+{
+	char **items;
+	char **data;
+	void **void_data;
+
+	items = reallocarray(m->items, m->len + 1, sizeof(*m->items));
+	if(items == NULL)
+	{
+		return 1;
+	}
+	m->items = items;
+
+	data = reallocarray(m->data, m->len + 1, sizeof(*m->data));
+	if(data == NULL)
+	{
+		return 1;
+	}
+	m->data = data;
+
+	void_data = reallocarray(m->void_data, m->len + 1,
+			sizeof(*m->void_data));
+	if(void_data == NULL)
+	{
+		return 1;
+	}
+	m->void_data = void_data;
+
+	m->items[m->len] = strdup(source_items[index]);
+	m->data[m->len] = strdup(source_data[index]);
+	m->void_data[m->len] = source_void_data[index];
+	if(m->items[m->len] == NULL || m->data[m->len] == NULL)
+	{
+		free(m->items[m->len]);
+		free(m->data[m->len]);
+		return 1;
+	}
+
+	++m->len;
+	return 0;
+}
+
+/* Clears currently visible menu items. */
+static void
+clear_menu_items(menu_data_t *m)
+{
+	free_string_array(m->items, m->len);
+	free_string_array(m->data, m->len);
+	free(m->void_data);
+	m->items = NULL;
+	m->data = NULL;
+	m->void_data = NULL;
+	m->len = 0;
+}
+
+/* Releases source items. */
+static void
+reset_source_items(void)
+{
+	free_string_array(source_items, source_len);
+	free_string_array(source_data, source_len);
+	free(source_void_data);
+	source_items = NULL;
+	source_data = NULL;
+	source_void_data = NULL;
+	source_len = 0;
+}
+
+/* Releases menu-specific state. */
+static void
+cleanup_cmd_palette(menu_data_t *m)
+{
+	(void)m;
+
+	reset_source_items();
+}
+
+/* Checks whether item satisfies current filter. */
+static int
+item_matches(const char item[], const char pattern[])
+{
+	return pattern[0] == '\0' || strcasestr(item, pattern) != NULL;
 }
 
 /* vim: set tabstop=2 softtabstop=2 shiftwidth=2 noexpandtab cinoptions-=(0 : */

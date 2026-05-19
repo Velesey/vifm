@@ -27,6 +27,7 @@ typedef enum
 {
 	CLS_COMMAND,      /* Regular command-line command. */
 	CLS_MENU_COMMAND, /* Menu command-line command. */
+	CLS_MENU_FILTER,  /* Incremental filtering in menu mode. */
 	CLS_MENU_FSEARCH, /* Forward search in menu mode. */
 	CLS_MENU_BSEARCH, /* Backward search in menu mode. */
 	CLS_FSEARCH,      /* Forward search in normal mode. */

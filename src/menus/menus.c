@@ -197,6 +197,8 @@ menus_init_data(menu_data_t *m, view_t *view, char title[], char empty_msg[])
 	m->void_data = NULL;
 	m->key_handler = NULL;
 	m->get_spec = &default_get_spec;
+	m->filter_handler = NULL;
+	m->cleanup_handler = NULL;
 	m->extra_data = 0;
 	m->execute_handler = NULL;
 	m->menu_context = 0;
@@ -240,6 +242,11 @@ deinit_menu_data(menu_data_t *m)
 	if(!m->initialized)
 	{
 		return;
+	}
+
+	if(m->cleanup_handler != NULL)
+	{
+		m->cleanup_handler(m);
 	}
 
 	/* Menu elements don't always have data associated with them, but len isn't

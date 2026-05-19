@@ -73,6 +73,13 @@ typedef struct menu_data_t
 	 * default is provided, thus this is always safe to call. */
 	const char * (*get_spec)(const struct menu_data_t *m, int pos);
 
+	/* Callback for menu-specific incremental filtering.  Should return zero on
+	 * success and non-zero on error. */
+	int (*filter_handler)(struct menu_data_t *m, const char pattern[]);
+
+	/* Callback for releasing menu-specific state. */
+	void (*cleanup_handler)(struct menu_data_t *m);
+
 	/* Text displayed by menus_enter() function in case menu is empty, it can be
 	 * NULL if this cannot happen. */
 	char *empty_msg;
