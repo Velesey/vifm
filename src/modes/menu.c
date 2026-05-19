@@ -490,13 +490,13 @@ static void
 change_menu_top(menu_data_t *menu, int delta)
 {
 	menu->top =
-		MAX(MIN(menu->top + delta, menu->len - (getmaxy(menu_win) - 2)), 0);
+		MAX(MIN(menu->top + delta, menu->len - menus_visible_lines(menu)), 0);
 }
 
 int
 modmenu_last_line(const menu_data_t *menu)
 {
-	return menu->top + (getmaxy(menu_win) - 2) - 1;
+	return menu->top + menus_visible_lines(menu) - 1;
 }
 
 /* Redraw TUI. */

@@ -71,6 +71,9 @@ typedef struct menu_data_t
 	 * to stay in menu mode. */
 	int (*execute_handler)(struct view_t *view, struct menu_data_t *m);
 
+	/* Callback that returns full details for the current position. */
+	const char * (*details_handler)(const struct menu_data_t *m);
+
 	/* Callback that is called to query a spec at a given position.  Must never
 	 * return NULL, use an empty string for non-spec lines instead.  When unset, a
 	 * default is provided, thus this is always safe to call. */
@@ -99,6 +102,8 @@ typedef struct menu_data_t
 	/* Whether selecting an item should keep menu mode active while running
 	 * execute_handler. */
 	int menu_context;
+	/* Number of lines reserved at the bottom for details_handler output. */
+	int detail_lines;
 
 	menu_state_t *state; /* Opaque pointer to menu mode state. */
 	int initialized;     /* Marker that shows whether menu data needs freeing. */
@@ -191,6 +196,9 @@ void menus_remove_current(menu_state_t *ms);
 int menus_goto_file(menu_data_t *m, struct view_t *view, const char spec[],
 		int try_open);
 
+/* Returns number of visible item lines in a menu. */
+int menus_visible_lines(const menu_data_t *m);
+
 /* Navigates to directory from a menu. */
 void menus_goto_dir(struct view_t *view, const char path[]);
 
@@ -201,6 +209,9 @@ void menus_goto_dir(struct view_t *view, const char path[]);
  * print_errors isn't requested can return -1 to indicate issues with the
  * pattern. */
 int menus_search(const char pattern[], menu_data_t *m, int print_errors);
+
+/* Highlights literal substring matches in menu items without moving cursor. */
+int menus_substr_highlight(const char pattern[], menu_data_t *m);
 
 /* Resets search state of the menu according to specified parameters. */
 void menus_search_reset(menu_state_t *ms, int backward, int new_repeat_count);

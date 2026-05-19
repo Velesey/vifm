@@ -60,6 +60,7 @@ typedef enum
 PaletteAction;
 
 static int execute_cmd_palette_cb(view_t *view, menu_data_t *m);
+static const char * get_cmd_palette_details(const menu_data_t *m);
 static int count_custom_commands(char *list[]);
 static int append_source_item(char item[], char attrs[], char action[],
 		PaletteAction type);
@@ -110,6 +111,8 @@ show_cmd_palette_menu(view_t *view)
 	menus_init_data(&m, view, strdup("Command Palette"),
 			strdup("No commands available"));
 	m.execute_handler = &execute_cmd_palette_cb;
+	m.details_handler = &get_cmd_palette_details;
+	m.detail_lines = 7;
 	m.key_handler = &cmd_palette_khandler;
 	m.filter_handler = &filter_cmd_palette;
 	m.cleanup_handler = &cleanup_cmd_palette;
@@ -141,6 +144,13 @@ fail:
 	free_string_array(custom_cmds, custom_count*2);
 	menus_reset_data(&m);
 	return 1;
+}
+
+/* Gets complete text of the selected command palette entry. */
+static const char *
+get_cmd_palette_details(const menu_data_t *m)
+{
+	return (m->len > 0) ? m->items[m->pos] : "";
 }
 
 /* Callback that is called when menu item is selected.  Should return non-zero
@@ -796,7 +806,7 @@ filter_cmd_palette(menu_data_t *m, const char pattern[])
 	m->top = 0;
 	m->pos = 0;
 	m->hor_pos = 0;
-	return 0;
+	return menus_substr_highlight(pattern, m);
 }
 
 /* Appends a copy of a source item to the visible menu. */
