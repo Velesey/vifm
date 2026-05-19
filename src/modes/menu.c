@@ -509,6 +509,15 @@ cmd_ctrl_l(key_info_t key_info, keys_info_t *keys_info)
 static void
 cmd_return(key_info_t key_info, keys_info_t *keys_info)
 {
+	(void)key_info;
+	(void)keys_info;
+
+	modmenu_execute_current();
+}
+
+void
+modmenu_execute_current(void)
+{
 	static menu_data_t *saved_menu;
 
 	saved_menu = menu;
@@ -1163,6 +1172,13 @@ modmenu_get_ruler_width(void)
 {
 	assert(vle_mode_is(MENU_MODE) && "Menu mode must be active!");
 	return menus_get_ruler_width(menu);
+}
+
+menu_data_t *
+modmenu_get_current(void)
+{
+	assert(vle_mode_is(MENU_MODE) && "Menu mode must be active!");
+	return menu;
 }
 
 void

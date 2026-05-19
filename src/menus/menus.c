@@ -199,6 +199,7 @@ menus_init_data(menu_data_t *m, view_t *view, char title[], char empty_msg[])
 	m->get_spec = &default_get_spec;
 	m->extra_data = 0;
 	m->execute_handler = NULL;
+	m->menu_context = 0;
 	m->empty_msg = empty_msg;
 	m->cwd = strdup(flist_get_dir(view));
 	m->state = &menu_state;
