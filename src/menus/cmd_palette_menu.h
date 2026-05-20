@@ -22,9 +22,6 @@
 
 struct view_t;
 
-/* Returns non-zero if status bar message should be saved. */
-int show_cmd_palette_menu(struct view_t *view);
-
 /* Shows command palette through fzf.  Returns non-zero on error. */
 int show_cmd_palette_fzf(struct view_t *view);
 

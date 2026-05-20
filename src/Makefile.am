@@ -4,8 +4,6 @@
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-AM_CPPFLAGS = -DVIFM_SOURCE_DATA_DIR=\"$(abs_top_srcdir)/data\"
-
 vim_dir = $(pkgdatadir)/vim
 sample_colors_dir = $(pkgdatadir)/colors
 vimdoc_dir = $(pkgdatadir)/vim-doc

@@ -601,13 +601,7 @@ static void
 handle_empty_input(void)
 {
 	/* Clear selection/highlight. */
-	if(input_stat.prev_mode == MENU_MODE && input_stat.sub_mode == CLS_MENU_FILTER)
-	{
-		assert(input_stat.menu->filter_handler != NULL &&
-				"Menu filter submode requires a filter handler.");
-		(void)input_stat.menu->filter_handler(input_stat.menu, "");
-	}
-	else if(input_stat.prev_mode == MENU_MODE)
+	if(input_stat.prev_mode == MENU_MODE)
 	{
 		(void)menus_search("", input_stat.menu, 0);
 	}
@@ -659,12 +653,6 @@ handle_nonempty_input(void)
 		case CLS_MENU_BSEARCH:
 			result = menus_search(mbinput, input_stat.menu, /*print_errors=*/0);
 			update_state(result, menus_search_matched(input_stat.menu));
-			break;
-		case CLS_MENU_FILTER:
-			assert(input_stat.menu->filter_handler != NULL &&
-					"Menu filter submode requires a filter handler.");
-			result = input_stat.menu->filter_handler(input_stat.menu, mbinput);
-			update_state(result, input_stat.menu->len);
 			break;
 		case CLS_FILTER:
 			set_local_filter(mbinput);
@@ -738,7 +726,7 @@ void
 modcline_enter(CmdLineSubmode sub_mode, const char initial[])
 {
 	assert(sub_mode != CLS_MENU_COMMAND && sub_mode != CLS_MENU_FSEARCH &&
-			sub_mode != CLS_MENU_BSEARCH && sub_mode != CLS_MENU_FILTER &&
+			sub_mode != CLS_MENU_BSEARCH &&
 			"Use modcline_in_menu() for CLS_MENU_* submodes.");
 	assert(sub_mode != CLS_PROMPT &&
 			"Use modcline_prompt() for CLS_PROMPT submode.");
@@ -755,7 +743,7 @@ modcline_in_menu(CmdLineSubmode sub_mode, const char initial[],
 		struct menu_data_t *m)
 {
 	assert((sub_mode == CLS_MENU_COMMAND || sub_mode == CLS_MENU_FSEARCH ||
-			sub_mode == CLS_MENU_BSEARCH || sub_mode == CLS_MENU_FILTER) &&
+			sub_mode == CLS_MENU_BSEARCH) &&
 			"modcline_in_menu() is only for CLS_MENU_* submodes.");
 
 	if(enter_submode(sub_mode, initial, /*reenter=*/0) == 0)
@@ -789,10 +777,6 @@ enter_submode(CmdLineSubmode sub_mode, const char initial[], int reenter)
 	{
 		wprompt = L":";
 		complete_func = &vle_cmds_complete;
-	}
-	else if(sub_mode == CLS_MENU_FILTER)
-	{
-		wprompt = L">";
 	}
 	else if(sub_mode == CLS_FILTER)
 	{
@@ -969,9 +953,8 @@ init_line_stats(line_stats_t *stat, const wchar_t prompt[],
 	stat->expanding_abbrev = 0;
 	stat->state = PS_NORMAL;
 
-	if(sub_mode == CLS_MENU_FILTER ||
-			((is_forward_search(sub_mode) || is_backward_search(sub_mode)) &&
-			sub_mode != CLS_VWFSEARCH && sub_mode != CLS_VWBSEARCH))
+	if((is_forward_search(sub_mode) || is_backward_search(sub_mode)) &&
+			sub_mode != CLS_VWFSEARCH && sub_mode != CLS_VWBSEARCH)
 	{
 		stat->search_mode = 1;
 	}
@@ -1781,14 +1764,6 @@ cmd_return(key_info_t key_info, keys_info_t *keys_info)
 			local_filter_apply(curr_view, input);
 			ui_view_schedule_reload(curr_view);
 		}
-	}
-	else if(sub_mode == CLS_MENU_FILTER)
-	{
-		if(menu->len > 0)
-		{
-			menus_set_pos(menu->state, menu->pos);
-		}
-		curr_stats.save_msg = 1;
 	}
 	else if(!cfg.inc_search || prev_mode == VIEW_MODE || input[0] == '\0')
 	{

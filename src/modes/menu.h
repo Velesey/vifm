@@ -64,17 +64,11 @@ void modmenu_restore_pos(void);
  * width. */
 int modmenu_get_ruler_width(void);
 
-/* Retrieves currently active menu. */
-menu_data_t * modmenu_get_current(void);
-
 /* Leaves menu and starts command-line mode.  external flag shows whether
  * cmd should be prepended with ":!".  To be used from keyboard handlers, which
  * in this case must return KHR_MORPHED_MENU. */
 void modmenu_morph_into_cline(CmdLineSubmode submode, const char input[],
 		int external);
-
-/* Executes currently selected item. */
-void modmenu_execute_current(void);
 
 /* Allows running regular command-line mode commands from menu mode. */
 void modmenu_run_command(const char cmd[]);

@@ -158,8 +158,7 @@ static int colorscheme_cmd(const cmd_info_t *cmd_info);
 static int is_colorscheme_assoc_form(const cmd_info_t *cmd_info);
 static int assoc_colorscheme(const char name[], const char path[]);
 static void set_colorscheme(char *names[], int count);
-static int commandpalette_cmd(const cmd_info_t *cmd_info);
-static int commandpalettefzf_cmd(const cmd_info_t *cmd_info);
+static int cmdpalettefzf_cmd(const cmd_info_t *cmd_info);
 static int command_cmd(const cmd_info_t *cmd_info);
 static int compare_cmd(const cmd_info_t *cmd_info);
 static int copen_cmd(const cmd_info_t *cmd_info);
@@ -467,18 +466,10 @@ const cmd_add_t cmds_list[] = {
 	  .descr = "display/define :commands",
 	  .flags = HAS_EMARK,
 	  .handler = &command_cmd,     .min_args = 0,   .max_args = NOT_DEF, },
-	{ .name = "commandpalette",    .abbr = NULL,    .id = -1,
-	  .descr = "display command palette",
-	  .flags = 0,
-	  .handler = &commandpalette_cmd, .min_args = 0, .max_args = 0, },
-	{ .name = "cmdpalette",        .abbr = "cmdp",  .id = -1,
-	  .descr = "display command palette",
-	  .flags = 0,
-	  .handler = &commandpalette_cmd, .min_args = 0, .max_args = 0, },
 	{ .name = "cmdpalettefzf",     .abbr = NULL,    .id = -1,
 	  .descr = "display command palette via fzf",
 	  .flags = 0,
-	  .handler = &commandpalettefzf_cmd, .min_args = 0, .max_args = 0, },
+	  .handler = &cmdpalettefzf_cmd, .min_args = 0, .max_args = 0, },
 	{ .name = "compare",           .abbr = NULL,    .id = COM_COMPARE,
 	  .descr = "compare directories in two panes",
 	  .flags = HAS_EMARK | HAS_COMMENT,
@@ -1907,16 +1898,7 @@ set_colorscheme(char *names[], int count)
 }
 
 static int
-commandpalette_cmd(const cmd_info_t *cmd_info)
-{
-	(void)cmd_info;
-
-	cmds_preserve_selection();
-	return show_cmd_palette_menu(curr_view) != 0;
-}
-
-static int
-commandpalettefzf_cmd(const cmd_info_t *cmd_info)
+cmdpalettefzf_cmd(const cmd_info_t *cmd_info)
 {
 	(void)cmd_info;
 

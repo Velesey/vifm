@@ -490,13 +490,13 @@ static void
 change_menu_top(menu_data_t *menu, int delta)
 {
 	menu->top =
-		MAX(MIN(menu->top + delta, menu->len - menus_visible_lines(menu)), 0);
+		MAX(MIN(menu->top + delta, menu->len - (getmaxy(menu_win) - 2)), 0);
 }
 
 int
 modmenu_last_line(const menu_data_t *menu)
 {
-	return menu->top + menus_visible_lines(menu) - 1;
+	return menu->top + (getmaxy(menu_win) - 2) - 1;
 }
 
 /* Redraw TUI. */
@@ -508,15 +508,6 @@ cmd_ctrl_l(key_info_t key_info, keys_info_t *keys_info)
 
 static void
 cmd_return(key_info_t key_info, keys_info_t *keys_info)
-{
-	(void)key_info;
-	(void)keys_info;
-
-	modmenu_execute_current();
-}
-
-void
-modmenu_execute_current(void)
 {
 	static menu_data_t *saved_menu;
 
@@ -1172,13 +1163,6 @@ modmenu_get_ruler_width(void)
 {
 	assert(vle_mode_is(MENU_MODE) && "Menu mode must be active!");
 	return menus_get_ruler_width(menu);
-}
-
-menu_data_t *
-modmenu_get_current(void)
-{
-	assert(vle_mode_is(MENU_MODE) && "Menu mode must be active!");
-	return menu;
 }
 
 void

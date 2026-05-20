@@ -75,10 +75,6 @@ static void show_position_in_menu(const menu_data_t *m);
 static void open_selected_file(const char path[], int line_num);
 static void navigate_to_selected_file(view_t *view, const char path[]);
 static void draw_menu_item(menu_state_t *ms, int pos, int line, int clear);
-static void print_menu_item_tail(const char item_tail[], const char attrs_tail[],
-		const col_attr_t *col, int color_pair);
-static void draw_menu_details(const menu_state_t *ms);
-static int get_detail_lines(const menu_data_t *m);
 static void draw_search_match(char str[], int start, int end, int line,
 		int width, const cchar_t *attrs);
 static void normalize_top(menu_state_t *ms);
@@ -148,11 +144,6 @@ menus_remove_current(menu_state_t *ms)
 
 	remove_from_string_array(m->items, m->len, m->pos);
 
-	if(m->item_attrs != NULL)
-	{
-		remove_from_string_array(m->item_attrs, m->len, m->pos);
-	}
-
 	if(m->data != NULL)
 	{
 		remove_from_string_array(m->data, m->len, m->pos);
@@ -202,18 +193,12 @@ menus_init_data(menu_data_t *m, view_t *view, char title[], char empty_msg[])
 	m->pos = 0;
 	m->hor_pos = 0;
 	m->items = NULL;
-	m->item_attrs = NULL;
 	m->data = NULL;
 	m->void_data = NULL;
 	m->key_handler = NULL;
-	m->details_handler = NULL;
 	m->get_spec = &default_get_spec;
-	m->filter_handler = NULL;
-	m->cleanup_handler = NULL;
 	m->extra_data = 0;
 	m->execute_handler = NULL;
-	m->menu_context = 0;
-	m->detail_lines = 0;
 	m->empty_msg = empty_msg;
 	m->cwd = strdup(flist_get_dir(view));
 	m->state = &menu_state;
@@ -256,22 +241,12 @@ deinit_menu_data(menu_data_t *m)
 		return;
 	}
 
-	if(m->cleanup_handler != NULL)
-	{
-		m->cleanup_handler(m);
-	}
-
 	/* Menu elements don't always have data associated with them, but len isn't
 	 * zero.  That's why we need this check. */
 	if(m->data != NULL)
 	{
 		free_string_array(m->data, m->len);
 		m->data = NULL;
-	}
-	if(m->item_attrs != NULL)
-	{
-		free_string_array(m->item_attrs, m->len);
-		m->item_attrs = NULL;
 	}
 	free_string_array(m->items, m->len);
 	free(m->void_data);
@@ -298,7 +273,7 @@ menus_set_pos(menu_state_t *ms, int pos)
 	redraw = 0;
 	if(pos > modmenu_last_line(m))
 	{
-		m->top = pos - (menus_visible_lines(m) - 1);
+		m->top = pos - (ms->win_rows - 2 - 1);
 		redraw = 1;
 	}
 	else if(pos < m->top)
@@ -309,7 +284,7 @@ menus_set_pos(menu_state_t *ms, int pos)
 
 	if(cfg.scroll_off > 0)
 	{
-		int s = MIN(DIV_ROUND_UP(menus_visible_lines(m), 2), cfg.scroll_off);
+		int s = MIN(DIV_ROUND_UP(ms->win_rows - 2, 2), cfg.scroll_off);
 		if(pos - m->top < s && m->top > 0)
 		{
 			m->top -= s - (pos - m->top);
@@ -334,12 +309,10 @@ menus_set_pos(menu_state_t *ms, int pos)
 	else
 	{
 		draw_menu_item(ms, m->pos, ms->current, 0);
-		draw_menu_details(ms);
 		show_position_in_menu(m);
 	}
 
 	checked_wmove(menu_win, ms->current, 2);
-
 }
 
 /* Displays current menu position on a ruler. */
@@ -472,18 +445,17 @@ void
 menus_partial_redraw(menu_state_t *ms)
 {
 	int i, pos;
-	const int y = menus_visible_lines(ms->d);
+	const int y = getmaxy(menu_win);
 
 	normalize_top(ms);
 
 	werase(menu_win);
 	draw_menu_frame(ms);
 
-	for(i = 0, pos = ms->d->top; i < y && pos < ms->d->len; ++i, ++pos)
+	for(i = 0, pos = ms->d->top; i < y - 2 && pos < ms->d->len; ++i, ++pos)
 	{
 		draw_menu_item(ms, pos, i + 1, 0);
 	}
-	draw_menu_details(ms);
 
 	show_position_in_menu(ms->d);
 }
@@ -497,7 +469,6 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	int i;
 	int off;
 	char *item_tail;
-	const char *attrs_tail = NULL;
 	const int width = (curr_stats.load_stage == 0) ? 100 : getmaxx(menu_win) - 2;
 
 	/* Calculate color for the line. */
@@ -525,11 +496,6 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 
 	item_tail = escaped + off;
 	replace_char(item_tail, '\t', ' ');
-	if(m->item_attrs != NULL && m->item_attrs[pos] != NULL)
-	{
-		const size_t attrs_len = strlen(m->item_attrs[pos]);
-		attrs_tail = m->item_attrs[pos] + MIN((size_t)m->hor_pos, attrs_len);
-	}
 
 	ui_set_attr(menu_win, &col, color_pair);
 
@@ -555,7 +521,7 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	}
 
 	checked_wmove(menu_win, line, 2);
-	print_menu_item_tail(item_tail, attrs_tail, &col, color_pair);
+	wprint(menu_win, item_tail);
 
 	if(ms->search_highlight && ms->matches != NULL && ms->matches[pos][0] >= 0)
 	{
@@ -565,105 +531,6 @@ draw_menu_item(menu_state_t *ms, int pos, int line, int clear)
 	}
 
 	free(escaped);
-}
-
-/* Prints menu item tail applying optional muted attributes. */
-static void
-print_menu_item_tail(const char item_tail[], const char attrs_tail[],
-		const col_attr_t *col, int color_pair)
-{
-	if(attrs_tail == NULL)
-	{
-		wprint(menu_win, item_tail);
-		return;
-	}
-
-	const cchar_t base_attrs = cs_color_to_cchar(col, color_pair);
-	col_attr_t aux_col = *col;
-	cs_mix_colors(&aux_col, &cfg.cs.color[AUX_WIN_COLOR]);
-	aux_col.attr |= A_DIM;
-	aux_col.gui_attr |= A_DIM;
-	const cchar_t aux_attrs = cs_color_to_cchar(&aux_col, -1);
-
-	const char *line = item_tail;
-	const char *attrs = attrs_tail;
-	while(*line != '\0')
-	{
-		const size_t len = utf8_chrw(line);
-		char char_buf[len + 1U];
-		copy_str(char_buf, sizeof(char_buf), line);
-		wprinta(menu_win, char_buf, (*attrs == 'a' ? &aux_attrs : &base_attrs),
-				/*attrs_xors=*/0);
-
-		line += len;
-		if(*attrs != '\0')
-		{
-			++attrs;
-		}
-	}
-}
-
-/* Draws full details for the current menu item. */
-static void
-draw_menu_details(const menu_state_t *ms)
-{
-	const menu_data_t *const m = ms->d;
-	const int lines = get_detail_lines(m);
-	if(lines == 0 || m->details_handler == NULL)
-	{
-		return;
-	}
-
-	const int width = getmaxx(menu_win) - 4;
-	const int first_line = getmaxy(menu_win) - lines - 1;
-	const char *text = m->details_handler(m);
-	const char *p = text;
-	int i;
-
-	ui_set_attr(menu_win, &cfg.cs.color[WIN_COLOR], cfg.cs.pair[WIN_COLOR]);
-	checked_wmove(menu_win, first_line - 1, 1);
-	whline(menu_win, ACS_HLINE, getmaxx(menu_win) - 2);
-
-	for(i = 0; i < lines; ++i)
-	{
-		checked_wmove(menu_win, first_line + i, 1);
-		wprintw(menu_win, "%*s", getmaxx(menu_win) - 2, "");
-
-		if(p == NULL || p[0] == '\0')
-		{
-			continue;
-		}
-
-		size_t len = utf8_nstrsnlen(p, width);
-		if(p[len] != '\0' && len > 0U)
-		{
-			const char *space = p + len;
-			while(space > p && space[-1] != ' ')
-			{
-				--space;
-			}
-			if(space > p)
-			{
-				len = (space - 1) - p;
-			}
-		}
-
-		checked_wmove(menu_win, first_line + i, 2);
-		wprintw(menu_win, "%.*s", (int)len, p);
-		p += len;
-		p = skip_whitespace(p);
-	}
-}
-
-/* Returns number of lines reserved for details. */
-static int
-get_detail_lines(const menu_data_t *m)
-{
-	if(m->details_handler == NULL)
-	{
-		return 0;
-	}
-	return MIN(m->detail_lines, MAX(0, getmaxy(menu_win) - 5));
 }
 
 /* Draws search match highlight on the element. */
@@ -727,14 +594,7 @@ draw_search_match(char str[], int start, int end, int line, int width,
 static void
 normalize_top(menu_state_t *ms)
 {
-	ms->d->top = MAX(0, MIN(ms->d->len - menus_visible_lines(ms->d),
-				ms->d->top));
-}
-
-int
-menus_visible_lines(const menu_data_t *m)
-{
-	return MAX(1, getmaxy(menu_win) - 2 - get_detail_lines(m));
+	ms->d->top = MAX(0, MIN(ms->d->len - (ms->win_rows - 2), ms->d->top));
 }
 
 /* Draws box and title of the menu. */
@@ -1340,48 +1200,6 @@ menus_search(const char pattern[], menu_data_t *m, int print_errors)
 		}
 	}
 	return save;
-}
-
-int
-menus_substr_highlight(const char pattern[], menu_data_t *m)
-{
-	menu_state_t *const ms = m->state;
-	int i;
-
-	free(ms->matches);
-	ms->matches = NULL;
-	ms->matching_entries = 0;
-	ms->search_highlight = 1;
-
-	if(pattern[0] == '\0')
-	{
-		return 0;
-	}
-
-	ms->matches = reallocarray(NULL, m->len, sizeof(*ms->matches));
-	if(ms->matches == NULL && m->len != 0)
-	{
-		return -1;
-	}
-
-	memset(ms->matches, -1, 2*sizeof(**ms->matches)*m->len);
-
-	for(i = 0; i < m->len; ++i)
-	{
-		const char *const item = m->items[i];
-		const char *const match = strcasestr(item, pattern);
-		if(match != NULL)
-		{
-			const int start = match - item;
-			const int end = start + strlen(pattern);
-
-			ms->matches[i][0] = start + escape_unreadableo(item, start);
-			ms->matches[i][1] = end + escape_unreadableo(item, end);
-			++ms->matching_entries;
-		}
-	}
-
-	return 0;
 }
 
 /* Goes through all menu items and marks those that match search pattern.
