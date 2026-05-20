@@ -220,6 +220,7 @@ const char *tags[] = {
 	"vifm-:clone",
 	"vifm-:cm",
 	"vifm-:cmap",
+	"vifm-:cmdpalettefzf",
 	"vifm-:cno",
 	"vifm-:cnorea",
 	"vifm-:cnoreabbrev",

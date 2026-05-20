@@ -1833,6 +1833,13 @@ by the terminal.  If none matches, current one remains unchanged.  For example:
 .BI :comc[lear]
 remove all user defined commands.
 .TP
+.BI "                                         :cmdpalettefzf"
+.TP
+.BI :cmdpalettefzf
+display command palette through the external fzf program.  The palette lists
+builtin commands, user commands and normal mode key actions.  If fzf can't be
+found in $PATH, an error message is displayed.
+.TP
 .BI "                                         :command"
 .TP
 .BI :com[mand]
@@ -8167,6 +8174,7 @@ Mappings:
 Expansions of command-line mode:
   :cabbrev, :cnoreabbrev    command-line abbreviations
   :command                  user commands
+  :cmdpalettefzf            command palette through fzf
 
 Program associations:
   :file                     programs set for the file type
