@@ -1943,6 +1943,12 @@ Also see |vifm-file-copying|.
 :[range]fin[d]
     repeat last :find command.
 
+                                               *vifm-:findfzf*
+:findfzf
+    display files under the current directory through the external fzf program
+    and navigate to the selected file.  If fzf can't be found in $PATH, an
+    error message is displayed.
+
 :fini[sh]                                      *vifm-:finish* *vifm-:fini*
     stop script sourcing.  Can only be used in a vifm script file.  This is a
     quick way to skip processing of the rest of the file without even parsing

@@ -286,6 +286,7 @@ const char *tags[] = {
 	"vifm-:filter",
 	"vifm-:fin",
 	"vifm-:find",
+	"vifm-:findfzf",
 	"vifm-:fini",
 	"vifm-:finish",
 	"vifm-:go",

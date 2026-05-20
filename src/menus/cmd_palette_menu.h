@@ -23,6 +23,10 @@ struct view_t;
 /* Shows command palette through fzf.  Returns non-zero on error. */
 int show_cmd_palette_fzf(struct view_t *view);
 
+/* Shows files under current directory through fzf and navigates to selected
+ * file.  Returns non-zero on error. */
+int show_find_fzf(struct view_t *view);
+
 #endif /* VIFM__MENUS__CMD_PALETTE_MENU_H__ */
 
 /* vim: set tabstop=2 softtabstop=2 shiftwidth=2 noexpandtab cinoptions-=(0 : */

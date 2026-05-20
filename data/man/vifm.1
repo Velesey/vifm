@@ -2267,6 +2267,13 @@ range.
 .BI :[range]fin[d]
 repeat last :find command.
 .TP
+.BI "                                         :findfzf"
+.TP
+.BI :findfzf
+display files under the current directory through the external fzf program and
+navigate to the selected file.  If fzf can't be found in $PATH, an error message
+is displayed.
+.TP
 .BI "                                         :finish"
 .TP
 .BI :fini[sh]

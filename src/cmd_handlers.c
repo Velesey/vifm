@@ -200,6 +200,7 @@ static int set_view_filter(view_t *view, const char filter[],
 		const char fallback[], int invert);
 static int get_filter_inversion_state(const cmd_info_t *cmd_info);
 static int find_cmd(const cmd_info_t *cmd_info);
+static int findfzf_cmd(const cmd_info_t *cmd_info);
 static int finish_cmd(const cmd_info_t *cmd_info);
 static int goto_path_cmd(const cmd_info_t *cmd_info);
 static int grep_cmd(const cmd_info_t *cmd_info);
@@ -590,6 +591,10 @@ const cmd_add_t cmds_list[] = {
 	  .flags = HAS_RANGE | HAS_QUOTED_ARGS | HAS_MACROS_FOR_CMD
 	         | HAS_SELECTION_SCOPE,
 	  .handler = &find_cmd,        .min_args = 0,   .max_args = NOT_DEF, },
+	{ .name = "findfzf",           .abbr = NULL,    .id = -1,
+	  .descr = "find files through fzf",
+	  .flags = 0,
+	  .handler = &findfzf_cmd,     .min_args = 0,   .max_args = 0, },
 	{ .name = "finish",            .abbr = "fini",  .id = -1,
 	  .descr = "stop script processing",
 	  .flags = HAS_COMMENT,
@@ -2698,6 +2703,15 @@ static int
 find_cmd(const cmd_info_t *cmd_info)
 {
 	return act_find(cmd_info->args, cmd_info->argc, cmd_info->argv);
+}
+
+static int
+findfzf_cmd(const cmd_info_t *cmd_info)
+{
+	(void)cmd_info;
+
+	cmds_preserve_selection();
+	return show_find_fzf(curr_view) != 0;
 }
 
 static int

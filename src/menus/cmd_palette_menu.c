@@ -23,6 +23,7 @@
 #include <string.h> /* strcmp() strdup() strlen() */
 #include <wchar.h> /* wchar_t */
 
+#include "../compat/fs_limits.h"
 #include "../compat/os.h"
 #include "../compat/reallocarray.h"
 #include "../engine/cmds.h"
@@ -35,12 +36,14 @@
 #include "../bracket_notation.h"
 #include "../background.h"
 #include "../utils/macros.h"
+#include "../utils/fs.h"
 #include "../utils/path.h"
 #include "../utils/str.h"
 #include "../utils/string_array.h"
 #include "../utils/utils.h"
 #include "../cmd_core.h"
 #include "../cmd_handlers.h"
+#include "../filelist.h"
 
 /* Minimal length of command name column. */
 #define CMDNAME_COLUMN_MIN_WIDTH 10
@@ -59,6 +62,8 @@ static int execute_cmd_palette_action(view_t *view, const char action[],
 static int build_cmd_palette_source(void);
 static int write_fzf_input(FILE *fp);
 static int pick_fzf_item(FILE *input, int *picked);
+static int pick_fzf_file(view_t *view, char **picked);
+static void goto_picked_file(view_t *view, const char path[]);
 static int count_custom_commands(char *list[]);
 static int append_source_item(char item[], char action[], PaletteAction type);
 static int append_builtin_commands(size_t cmdname_width);
@@ -116,6 +121,27 @@ show_cmd_palette_fzf(view_t *view)
 	}
 
 	reset_source_items();
+	return err;
+}
+
+int
+show_find_fzf(view_t *view)
+{
+	char *picked = NULL;
+
+	if(find_cmd_in_path("fzf", /*path_len=*/0UL, /*path=*/NULL) != 0)
+	{
+		ui_sb_err("fzf executable not found");
+		return 1;
+	}
+
+	const int err = pick_fzf_file(view, &picked);
+	if(err == 0 && picked != NULL)
+	{
+		goto_picked_file(view, picked);
+	}
+
+	free(picked);
 	return err;
 }
 
@@ -221,6 +247,78 @@ pick_fzf_item(FILE *input, int *picked)
 	*picked = find_source_item(lines[0]);
 	free_string_array(lines, nlines);
 	return 0;
+}
+
+/* Lets user pick a file under view's current directory through fzf. */
+static int
+pick_fzf_file(view_t *view, char **picked)
+{
+	FILE *output;
+	char **lines;
+	int nlines;
+
+	char *const escaped_dir = shell_arg_escape(flist_get_dir(view),
+			curr_stats.shell_type);
+	if(escaped_dir == NULL)
+	{
+		ui_sb_err("Failed to prepare fzf command");
+		return 1;
+	}
+
+	char *const cmd = format_str("find %s -type f -print0 | "
+			"fzf --read0 --print0 --prompt=File: --layout=reverse --height=100%%",
+			escaped_dir);
+	free(escaped_dir);
+	if(cmd == NULL)
+	{
+		ui_sb_err("Failed to prepare fzf command");
+		return 1;
+	}
+
+	ui_shutdown();
+	pid_t pid = bg_run_and_capture(cmd, /*user_sh=*/0, /*in=*/NULL, &output,
+			/*err=*/NULL);
+	free(cmd);
+	if(pid == (pid_t)-1)
+	{
+		recover_after_shellout();
+		update_screen(UT_FULL);
+		return 1;
+	}
+
+	lines = read_stream_lines(output, &nlines, /*null_sep_heuristic=*/1,
+			/*cb=*/NULL, /*arg=*/NULL);
+	fclose(output);
+	recover_after_shellout();
+	update_screen(UT_FULL);
+
+	if(nlines > 0)
+	{
+		*picked = strdup(lines[0]);
+	}
+	free_string_array(lines, nlines);
+
+	return 0;
+}
+
+/* Navigates the view to a file picked by fzf. */
+static void
+goto_picked_file(view_t *view, const char path[])
+{
+	char full_path[PATH_MAX + 1];
+	char *fname;
+
+	to_canonic_path(path, flist_get_dir(view), full_path, sizeof(full_path));
+	if(!path_exists(full_path, NODEREF))
+	{
+		ui_sb_errf("Path doesn't exist: %s", full_path);
+		return;
+	}
+
+	fname = strdup(get_last_path_component(full_path));
+	remove_last_path_component(full_path);
+	navigate_to_file(view, full_path, fname, 1);
+	free(fname);
 }
 
 /* Counts custom command name/description pairs. */
