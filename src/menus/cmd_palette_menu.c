@@ -27,6 +27,7 @@
 #include <wchar.h> /* wchar_t wcscmp() */
 
 #include "../cfg/config.h"
+#include "../compat/os.h"
 #include "../compat/reallocarray.h"
 #include "../engine/keys.h"
 #include "../engine/cmds.h"
@@ -35,8 +36,11 @@
 #include "../modes/menu.h"
 #include "../modes/modes.h"
 #include "../modes/wk.h"
+#include "../status.h"
+#include "../ui/statusbar.h"
 #include "../ui/ui.h"
 #include "../bracket_notation.h"
+#include "../background.h"
 #include "../utils/macros.h"
 #include "../utils/path.h"
 #include "../utils/str.h"
@@ -60,6 +64,11 @@ typedef enum
 PaletteAction;
 
 static int execute_cmd_palette_cb(view_t *view, menu_data_t *m);
+static int execute_cmd_palette_action(view_t *view, const char action[],
+		PaletteAction type);
+static int build_cmd_palette_source(void);
+static int write_fzf_input(FILE *fp);
+static int pick_fzf_item(FILE *input, int *picked);
 static const char * get_cmd_palette_details(const menu_data_t *m);
 static int count_custom_commands(char *list[]);
 static int append_source_item(char item[], char attrs[], char action[],
@@ -102,12 +111,6 @@ static int source_len;
 int
 show_cmd_palette_menu(view_t *view)
 {
-	char **custom_cmds = vle_cmds_list_udcs();
-	const int custom_count = count_custom_commands(custom_cmds);
-	size_t cmdname_width = calc_cmdname_width(custom_cmds);
-
-	reset_source_items();
-
 	menus_init_data(&m, view, strdup("Command Palette"),
 			strdup("No commands available"));
 	m.execute_handler = &execute_cmd_palette_cb;
@@ -117,15 +120,10 @@ show_cmd_palette_menu(view_t *view)
 	m.filter_handler = &filter_cmd_palette;
 	m.cleanup_handler = &cleanup_cmd_palette;
 
-	if(append_builtin_commands(&m, cmdname_width) != 0 ||
-			append_custom_commands(&m, custom_cmds, cmdname_width) != 0)
+	if(build_cmd_palette_source() != 0)
 	{
 		goto fail;
 	}
-	free_string_array(custom_cmds, custom_count*2);
-	custom_cmds = NULL;
-
-	vle_keys_list(NORMAL_MODE, &append_key_action, /*user_only=*/0);
 	if(filter_cmd_palette(&m, "") != 0)
 	{
 		goto fail;
@@ -141,9 +139,53 @@ show_cmd_palette_menu(view_t *view)
 	return 0;
 
 fail:
-	free_string_array(custom_cmds, custom_count*2);
 	menus_reset_data(&m);
 	return 1;
+}
+
+int
+show_cmd_palette_fzf(view_t *view)
+{
+	if(find_cmd_in_path("fzf", /*path_len=*/0UL, /*path=*/NULL) != 0)
+	{
+		ui_sb_err("fzf executable not found");
+		return 1;
+	}
+
+	if(build_cmd_palette_source() != 0)
+	{
+		reset_source_items();
+		return 1;
+	}
+
+	FILE *input = os_tmpfile();
+	if(input == NULL)
+	{
+		reset_source_items();
+		ui_sb_err("Failed to create temporary file for fzf");
+		return 1;
+	}
+
+	if(write_fzf_input(input) != 0)
+	{
+		fclose(input);
+		reset_source_items();
+		ui_sb_err("Failed to prepare fzf input");
+		return 1;
+	}
+
+	int picked = -1;
+	const int err = pick_fzf_item(input, &picked);
+	fclose(input);
+
+	if(err == 0 && picked >= 0 && picked < source_len)
+	{
+		const PaletteAction type = (intptr_t)source_void_data[picked];
+		(void)execute_cmd_palette_action(view, source_data[picked], type);
+	}
+
+	reset_source_items();
+	return err;
 }
 
 /* Gets complete text of the selected command palette entry. */
@@ -165,7 +207,13 @@ execute_cmd_palette_cb(view_t *view, menu_data_t *m)
 
 	const char *const action = m->data[m->pos];
 	const PaletteAction type = (intptr_t)m->void_data[m->pos];
+	return execute_cmd_palette_action(view, action, type);
+}
 
+/* Executes a command palette action. */
+static int
+execute_cmd_palette_action(view_t *view, const char action[], PaletteAction type)
+{
 	if(type & PA_KEYS)
 	{
 		wchar_t *const keys = substitute_specs(action);
@@ -189,6 +237,85 @@ execute_cmd_palette_cb(view_t *view, menu_data_t *m)
 	}
 
 	cmds_dispatch1(action, view, CIT_COMMAND);
+	return 0;
+}
+
+/* Builds source entries for command palette. */
+static int
+build_cmd_palette_source(void)
+{
+	char **custom_cmds = vle_cmds_list_udcs();
+	const int custom_count = count_custom_commands(custom_cmds);
+	const size_t cmdname_width = calc_cmdname_width(custom_cmds);
+
+	reset_source_items();
+
+	const int err = append_builtin_commands(&m, cmdname_width) != 0 ||
+	                append_custom_commands(&m, custom_cmds, cmdname_width) != 0;
+	free_string_array(custom_cmds, custom_count*2);
+	if(err)
+	{
+		return 1;
+	}
+
+	vle_keys_list(NORMAL_MODE, &append_key_action, /*user_only=*/0);
+	return 0;
+}
+
+/* Writes fzf input with hidden index in the first tab-separated column. */
+static int
+write_fzf_input(FILE *fp)
+{
+	int i;
+	for(i = 0; i < source_len; ++i)
+	{
+		if(fprintf(fp, "%d\t%s\n", i, source_items[i]) < 0)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* Lets user pick item through fzf. */
+static int
+pick_fzf_item(FILE *input, int *picked)
+{
+	FILE *output;
+	char **lines;
+	int nlines;
+	int id;
+
+	char cmd[] = "fzf --with-nth=2.. --nth=2.. --prompt=Command: "
+	             "--layout=reverse --height=100%";
+
+	ui_shutdown();
+	pid_t pid = bg_run_and_capture(cmd, /*user_sh=*/0, input, &output,
+			/*err=*/NULL);
+	if(pid == (pid_t)-1)
+	{
+		recover_after_shellout();
+		update_screen(UT_FULL);
+		return 1;
+	}
+
+	lines = read_stream_lines(output, &nlines, /*null_sep_heuristic=*/1,
+			/*cb=*/NULL, /*arg=*/NULL);
+	fclose(output);
+	recover_after_shellout();
+	update_screen(UT_FULL);
+
+	if(nlines == 0)
+	{
+		free_string_array(lines, nlines);
+		return 0;
+	}
+
+	if(sscanf(lines[0], "%d", &id) == 1)
+	{
+		*picked = id;
+	}
+	free_string_array(lines, nlines);
 	return 0;
 }
 

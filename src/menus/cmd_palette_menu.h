@@ -25,6 +25,9 @@ struct view_t;
 /* Returns non-zero if status bar message should be saved. */
 int show_cmd_palette_menu(struct view_t *view);
 
+/* Shows command palette through fzf.  Returns non-zero on error. */
+int show_cmd_palette_fzf(struct view_t *view);
+
 #endif /* VIFM__MENUS__CMD_PALETTE_MENU_H__ */
 
 /* vim: set tabstop=2 softtabstop=2 shiftwidth=2 noexpandtab cinoptions-=(0 : */
