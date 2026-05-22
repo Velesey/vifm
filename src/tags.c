@@ -66,6 +66,7 @@ const char *tags[] = {
 	"vifm-'findprg'",
 	"vifm-'followlinks'",
 	"vifm-'fusehome'",
+	"vifm-'fzf'",
 	"vifm-'gd'",
 	"vifm-'gdefault'",
 	"vifm-'grepprg'",

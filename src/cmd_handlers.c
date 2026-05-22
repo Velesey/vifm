@@ -1897,6 +1897,13 @@ command_cmd(const cmd_info_t *cmd_info)
 {
 	char *desc;
 
+	if(cmd_info->argc < 2 && cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_cmd_palette_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : NULL) != 0;
+	}
+
 	if(cmd_info->argc == 0)
 	{
 		cmds_preserve_selection();
@@ -2683,6 +2690,13 @@ set_view_filter(view_t *view, const char filter[], const char fallback[],
 static int
 find_cmd(const cmd_info_t *cmd_info)
 {
+	if(cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_find_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : NULL) != 0;
+	}
+
 	return act_find(cmd_info->args, cmd_info->argc, cmd_info->argv);
 }
 
@@ -2735,6 +2749,13 @@ goto_path_cmd(const cmd_info_t *cmd_info)
 static int
 grep_cmd(const cmd_info_t *cmd_info)
 {
+	if(cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_grep_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : ".") != 0;
+	}
+
 	return act_grep(cmd_info->argc > 0 ? cmd_info->args : NULL, cmd_info->emark);
 }
 

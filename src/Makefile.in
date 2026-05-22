@@ -175,8 +175,9 @@ am_vifm_OBJECTS = cfg/config.$(OBJEXT) cfg/info.$(OBJEXT) \
 	lua/vlua.$(OBJEXT) lua/vlua_cbacks.$(OBJEXT) \
 	lua/vlua_state.$(OBJEXT) menus/apropos_menu.$(OBJEXT) \
 	menus/bmarks_menu.$(OBJEXT) menus/cabbrevs_menu.$(OBJEXT) \
-	menus/chistory_menu.$(OBJEXT) menus/colorscheme_menu.$(OBJEXT) \
-	menus/commands_menu.$(OBJEXT) menus/dirhistory_menu.$(OBJEXT) \
+	menus/chistory_menu.$(OBJEXT) menus/cmd_palette_menu.$(OBJEXT) \
+	menus/colorscheme_menu.$(OBJEXT) menus/commands_menu.$(OBJEXT) \
+	menus/dirhistory_menu.$(OBJEXT) \
 	menus/dirstack_menu.$(OBJEXT) menus/filetypes_menu.$(OBJEXT) \
 	menus/find_menu.$(OBJEXT) menus/grep_menu.$(OBJEXT) \
 	menus/history_menu.$(OBJEXT) menus/jobs_menu.$(OBJEXT) \
@@ -344,6 +345,7 @@ am__depfiles_remade = ./$(DEPDIR)/args.Po ./$(DEPDIR)/background.Po \
 	menus/$(DEPDIR)/apropos_menu.Po menus/$(DEPDIR)/bmarks_menu.Po \
 	menus/$(DEPDIR)/cabbrevs_menu.Po \
 	menus/$(DEPDIR)/chistory_menu.Po \
+	menus/$(DEPDIR)/cmd_palette_menu.Po \
 	menus/$(DEPDIR)/colorscheme_menu.Po \
 	menus/$(DEPDIR)/commands_menu.Po \
 	menus/$(DEPDIR)/dirhistory_menu.Po \
@@ -939,6 +941,7 @@ vifm_SOURCES = \
 	menus/bmarks_menu.c menus/bmarks_menu.h \
 	menus/cabbrevs_menu.c menus/cabbrevs_menu.h \
 	menus/chistory_menu.c menus/chistory_menu.h \
+	menus/cmd_palette_menu.c menus/cmd_palette_menu.h \
 	menus/colorscheme_menu.c menus/colorscheme_menu.h \
 	menus/commands_menu.c menus/commands_menu.h \
 	menus/dirhistory_menu.c menus/dirhistory_menu.h \
@@ -1413,6 +1416,8 @@ menus/cabbrevs_menu.$(OBJEXT): menus/$(am__dirstamp) \
 	menus/$(DEPDIR)/$(am__dirstamp)
 menus/chistory_menu.$(OBJEXT): menus/$(am__dirstamp) \
 	menus/$(DEPDIR)/$(am__dirstamp)
+menus/cmd_palette_menu.$(OBJEXT): menus/$(am__dirstamp) \
+	menus/$(DEPDIR)/$(am__dirstamp)
 menus/colorscheme_menu.$(OBJEXT): menus/$(am__dirstamp) \
 	menus/$(DEPDIR)/$(am__dirstamp)
 menus/commands_menu.$(OBJEXT): menus/$(am__dirstamp) \
@@ -1817,6 +1822,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/bmarks_menu.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/cabbrevs_menu.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/chistory_menu.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/cmd_palette_menu.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/colorscheme_menu.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/commands_menu.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@menus/$(DEPDIR)/dirhistory_menu.Po@am__quote@ # am--include-marker
@@ -2885,6 +2891,7 @@ distclean: distclean-am
 	-rm -f menus/$(DEPDIR)/bmarks_menu.Po
 	-rm -f menus/$(DEPDIR)/cabbrevs_menu.Po
 	-rm -f menus/$(DEPDIR)/chistory_menu.Po
+	-rm -f menus/$(DEPDIR)/cmd_palette_menu.Po
 	-rm -f menus/$(DEPDIR)/colorscheme_menu.Po
 	-rm -f menus/$(DEPDIR)/commands_menu.Po
 	-rm -f menus/$(DEPDIR)/dirhistory_menu.Po
@@ -3154,6 +3161,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f menus/$(DEPDIR)/bmarks_menu.Po
 	-rm -f menus/$(DEPDIR)/cabbrevs_menu.Po
 	-rm -f menus/$(DEPDIR)/chistory_menu.Po
+	-rm -f menus/$(DEPDIR)/cmd_palette_menu.Po
 	-rm -f menus/$(DEPDIR)/colorscheme_menu.Po
 	-rm -f menus/$(DEPDIR)/commands_menu.Po
 	-rm -f menus/$(DEPDIR)/dirhistory_menu.Po

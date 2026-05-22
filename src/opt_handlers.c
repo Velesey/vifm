@@ -139,6 +139,7 @@ static void fillchars_handler(OPT_OP op, optval_t val);
 static void load_fillchars(void);
 static void findprg_handler(OPT_OP op, optval_t val);
 static void followlinks_handler(OPT_OP op, optval_t val);
+static void fzf_handler(OPT_OP op, optval_t val);
 static void fusehome_handler(OPT_OP op, optval_t val);
 static void gdefault_handler(OPT_OP op, optval_t val);
 static void grepprg_handler(OPT_OP op, optval_t val);
@@ -679,6 +680,10 @@ options[] = {
 	{ "followlinks", "", "go to target file on opening links",
 	  OPT_BOOL, 0, NULL, &followlinks_handler, NULL,
 	  { .ref.bool_val = &cfg.follow_links },
+	},
+	{ "fzf", "", "enable fzf-backed commands",
+	  OPT_BOOL, 0, NULL, &fzf_handler, NULL,
+	  { .ref.bool_val = &cfg.fzf },
 	},
 	{ "fusehome", "", "base directory for FUSE mounts",
 	  OPT_STR, 0, NULL, &fusehome_handler, NULL,
@@ -2178,6 +2183,12 @@ static void
 fastrun_handler(OPT_OP op, optval_t val)
 {
 	cfg.fast_run = val.bool_val;
+}
+
+static void
+fzf_handler(OPT_OP op, optval_t val)
+{
+	cfg.fzf = val.bool_val;
 }
 
 /* Handles new value for 'fillchars' option. */

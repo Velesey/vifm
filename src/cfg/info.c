@@ -2263,6 +2263,7 @@ store_global_options(JSON_Object *root)
 	append_dstr(options, format_str("findprg=%s", escape_spaces(cfg.find_prg)));
 	append_dstr(options, format_str("%sfollowlinks",
 				cfg.follow_links ? "" : "no"));
+	append_dstr(options, format_str("%sfzf", cfg.fzf ? "" : "no"));
 	append_dstr(options, format_str("fusehome=%s", escape_spaces(cfg.fuse_home)));
 	append_dstr(options, format_str("%sgdefault", cfg.gdefault ? "" : "no"));
 	append_dstr(options, format_str("grepprg=%s", escape_spaces(cfg.grep_prg)));
