@@ -143,6 +143,9 @@ endif
 " Add -s to the default value to suppress "Permission denied" errors
 set grepprg="grep -n -H -I -r -s %i %a %s"
 
+" Use fzf-backed interfaces for :command, :find and :grep if fzf is installed
+" set fzf
+
 " Enable preview of files in the right miller column (add `set miller` to turn
 " it on)
 set milleroptions+=rpreview:all
