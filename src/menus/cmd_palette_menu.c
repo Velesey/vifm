@@ -433,10 +433,18 @@ stash_find_fzf_results(view_t *view, const char root[], const char query[],
 			/*cb=*/NULL, /*arg=*/NULL);
 	fclose(output);
 
-	menus_init_data(&m, view,
-			format_str("FindFZF %s @ %s",
-			           query, root),
-			strdup("No files found"));
+	char *title = format_str("FindFZF %s @ %s", query, root);
+	char *empty_msg = strdup("No files found");
+	if(title == NULL || empty_msg == NULL)
+	{
+		free(title);
+		free(empty_msg);
+		free_string_array(lines, nlines);
+		ui_sb_err("Failed to prepare fzf find results");
+		return 1;
+	}
+
+	menus_init_data(&m, view, title, empty_msg);
 	m.stashable = 1;
 	m.execute_handler = &execute_find_fzf_cb;
 	m.key_handler = &menus_def_khandler;
@@ -498,7 +506,7 @@ goto_picked_file(view_t *view, const char path[])
 	char *fname;
 
 	to_canonic_path(path, flist_get_dir(view), full_path, sizeof(full_path));
-	if(!path_exists(full_path, NODEREF))
+	if(path_exists(full_path, NODEREF) == 0)
 	{
 		ui_sb_errf("Path doesn't exist: %s", full_path);
 		return;
@@ -843,6 +851,12 @@ append_section_header(const char title[])
 {
 	char *const item = format_str("-- %s --", title);
 	char *const action = strdup("");
+	if(item == NULL || action == NULL)
+	{
+		free(item);
+		free(action);
+		return 1;
+	}
 	return append_source_item(item, action, PA_HEADER);
 }
 
@@ -863,6 +877,12 @@ append_builtin_commands(size_t cmdname_width)
 				cmds_list[i].descr);
 		char *const action = strdup(cmds_list[i].name);
 		PaletteAction type = PA_COMMAND;
+		if(item == NULL || action == NULL)
+		{
+			free(item);
+			free(action);
+			return 1;
+		}
 		if(cmds_list[i].min_args > 0)
 		{
 			type |= PA_NEEDS_ARGS;
@@ -891,6 +911,12 @@ append_custom_commands(char *list[], size_t cmdname_width)
 		char *const item = format_str("%-*s :%-*s %s", KIND_COLUMN_WIDTH,
 				"usercmd", (int)cmdname_width, list[i], list[i + 1]);
 		char *const action = strdup(list[i]);
+		if(item == NULL || action == NULL)
+		{
+			free(item);
+			free(action);
+			return 1;
+		}
 
 		if(append_source_item(item, action, PA_COMMAND) != 0)
 		{
@@ -917,6 +943,11 @@ append_key_action(const wchar_t lhs[], const wchar_t rhs[], const char descr[])
 
 	char *const item = format_str("%-*s %-*s %s", KIND_COLUMN_WIDTH, "key",
 			KEY_COLUMN_MIN_WIDTH, keys, descr);
+	if(item == NULL)
+	{
+		free(keys);
+		return;
+	}
 	if(append_source_item(item, keys, PA_KEYS) != 0)
 	{
 		return;

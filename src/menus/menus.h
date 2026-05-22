@@ -128,7 +128,7 @@ void menus_switch_to(menu_data_t *m);
 void menus_put_on_stash(menu_state_t *ms);
 
 /* Saves menu for future use by :copen without displaying it.  Takes ownership
- * of menu data on success. */
+ * of menu data. */
 void menus_stash(menu_data_t *m);
 
 /* Restore previously saved menu.  Returns non-zero if status bar message should

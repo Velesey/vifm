@@ -889,6 +889,10 @@ menus_stash(menu_data_t *m)
 	{
 		stash_menu(m);
 	}
+	else if(m->initialized)
+	{
+		deinit_menu_data(m);
+	}
 }
 
 int
