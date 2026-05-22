@@ -175,6 +175,7 @@ cfg_init(void)
 	cfg.locate_prg = strdup("locate %a");
 	cfg.delete_prg = strdup("");
 	cfg.media_prg = format_str("%s/" SAMPLE_MEDIAPRG, get_installed_data_dir());
+	cfg.fzf = 0;
 
 	cfg.nav_open_files = 0;
 

@@ -21,11 +21,15 @@
 struct view_t;
 
 /* Shows command palette through fzf.  Returns non-zero on error. */
-int show_cmd_palette_fzf(struct view_t *view);
+int show_cmd_palette_fzf(struct view_t *view, const char query[]);
 
 /* Shows files under current directory through fzf and navigates to selected
  * file.  Returns non-zero on error. */
-int show_find_fzf(struct view_t *view);
+int show_find_fzf(struct view_t *view, const char query[]);
+
+/* Shows grep matches under current directory through fzf and navigates to the
+ * file of selected match.  Returns non-zero on error. */
+int show_grep_fzf(struct view_t *view, const char pattern[]);
 
 #endif /* VIFM__MENUS__CMD_PALETTE_MENU_H__ */
 

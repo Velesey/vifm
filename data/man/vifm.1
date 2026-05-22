@@ -1833,20 +1833,18 @@ by the terminal.  If none matches, current one remains unchanged.  For example:
 .BI :comc[lear]
 remove all user defined commands.
 .TP
-.BI "                                         :cmdpalettefzf"
-.TP
-.BI :cmdpalettefzf
-display command palette through the external fzf program.  The palette lists
-builtin commands, user commands and normal mode key actions.  If fzf can't be
-found in $PATH, an error message is displayed.
-.TP
 .BI "                                         :command"
 .TP
 .BI :com[mand]
 display a menu of user commands.  See "Menus and dialogs" section for controls.
+When 'fzf' is set, display a command palette through fzf instead.  The palette
+lists builtin commands, user commands and normal mode key actions and marks each
+item with its kind.
 .TP
 .BI ":com[mand] prefix"
 display user defined commands that start with the prefix.
+When 'fzf' is set, opens the command palette with prefix used as the initial fzf
+query.
 .TP
 .BI ":com[mand] name action[ &]"
 set or redefine a user command.
@@ -2266,13 +2264,11 @@ range.
 .TP
 .BI :[range]fin[d]
 repeat last :find command.
-.TP
-.BI "                                         :findfzf"
-.TP
-.BI :findfzf
-display files under the current directory through the external fzf program and
-navigate to the selected file.  If fzf can't be found in $PATH, an error message
-is displayed.
+
+When 'fzf' is set, :find displays files under the current directory through fzf
+and navigates to the selected file.  Filtered matches are saved as a Vifm
+results menu and can be reopened with :copen.  If fzf can't be found in $PATH,
+an error message is displayed.
 .TP
 .BI "                                         :finish"
 .TP
@@ -2303,6 +2299,12 @@ Searches among selected files if any.
 .BI :[range]gr[ep][!]
 repeat last :grep command.  "!" of this command inverts "!" in repeated
 command.
+
+When 'fzf' is set, :grep displays content matches under the current directory
+through fzf.  The selected match opens in the editor at its line; when the
+editor is closed, fzf is shown again.  When pattern is omitted, "." is used.
+ripgrep is used when available, otherwise grep is used.  If neither search tool
+nor fzf can be found in $PATH, an error message is displayed.
 .TP
 .BI "                                         :help"
 .TP
@@ -4537,6 +4539,13 @@ default: true
 Follow links on l or Enter.  That is navigate to destination file instead of
 treating the link as if it were target file.  Doesn't affects links to
 directories, which are always entered (use gf key for directories).
+.TP
+.BI 'fzf'
+type: boolean
+.br
+default: false
+.br
+Makes :command, :find and :grep use fzf-backed interfaces.
 .TP
 .BI 'fusehome'
 type: string
@@ -8181,7 +8190,6 @@ Mappings:
 Expansions of command-line mode:
   :cabbrev, :cnoreabbrev    command-line abbreviations
   :command                  user commands
-  :cmdpalettefzf            command palette through fzf
 
 Program associations:
   :file                     programs set for the file type

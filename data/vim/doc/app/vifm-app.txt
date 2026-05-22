@@ -1599,18 +1599,16 @@ The builtin commands are:
 :comc[lear]                                    *vifm-:comclear* *vifm-:comc*
     remove all user defined commands.
 
-                                               *vifm-:cmdpalettefzf*
-:cmdpalettefzf
-    display command palette through the external fzf program.  The palette
-    lists builtin commands, user commands and normal mode key actions.  If fzf
-    can't be found in $PATH, an error message is displayed.
-
                                                *vifm-:command* *vifm-:com*
 :com[mand]
     display a menu of user commands.  See |vifm-menus-and-dialogs| for
-    controls.
+    controls.  When |vifm-'fzf'| is set, display a command palette through fzf
+    instead.  The palette lists builtin commands, user commands and normal mode
+    key actions and marks each item with its kind.
 :com[mand] prefix
     display user defined commands that start with the prefix.
+    When |vifm-'fzf'| is set, opens the command palette with prefix used as the
+    initial fzf query.
 :com[mand][!] name action[ &]
     set or redefine a user command.  Use :com[mand]! to overwrite a
     previously set command of the same name.  Builtin commands can't be
@@ -1943,11 +1941,10 @@ Also see |vifm-file-copying|.
 :[range]fin[d]
     repeat last :find command.
 
-                                               *vifm-:findfzf*
-:findfzf
-    display files under the current directory through the external fzf program
-    and navigate to the selected file.  If fzf can't be found in $PATH, an
-    error message is displayed.
+    When |vifm-'fzf'| is set, :find displays files under the current directory
+    through fzf and navigates to the selected file.  Filtered matches are saved
+    as a Vifm results menu and can be reopened with |vifm-:copen|.  If fzf
+    can't be found in $PATH, an error message is displayed.
 
 :fini[sh]                                      *vifm-:finish* *vifm-:fini*
     stop script sourcing.  Can only be used in a vifm script file.  This is a
@@ -1973,6 +1970,13 @@ Also see |vifm-file-copying|.
 :[range]gr[ep][!]
     repeat last :grep command.  "!" of this command inverts "!" in repeated
     command.
+
+    When |vifm-'fzf'| is set, :grep displays content matches under the current
+    directory through fzf.  The selected match opens in the editor at its line;
+    when the editor is closed, fzf is shown again.  When pattern is omitted,
+    "." is used.  ripgrep is used when available, otherwise grep is used.  If
+    neither search tool nor fzf can be found in $PATH, an error message is
+    displayed.
 
                                                *vifm-:help* *vifm-:h*
 :h[elp]
@@ -3807,6 +3811,14 @@ default: true
 Follow links on l or Enter.  That is navigate to destination file instead of
 treating the link as if it were target file.  Doesn't affects links to
 directories, which are always entered (use |vifm-gf| for directories).
+
+                                               *vifm-'fzf'*
+fzf
+type: boolean
+default: false
+
+Makes |vifm-:command|, |vifm-:find| and |vifm-:grep| use fzf-backed
+interfaces.
 
                                                *vifm-'fusehome'*
 fusehome
@@ -6888,7 +6900,6 @@ Mappings:
 Expansions of command-line mode:
   |vifm-:cabbrev|, |vifm-:cnoreabbrev|  command-line abbreviations
   |vifm-:command|                     user commands
-  |vifm-:cmdpalettefzf|               command palette through fzf
 
 Program associations:
   |vifm-:file|                        programs set for the file type

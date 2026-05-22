@@ -158,7 +158,6 @@ static int colorscheme_cmd(const cmd_info_t *cmd_info);
 static int is_colorscheme_assoc_form(const cmd_info_t *cmd_info);
 static int assoc_colorscheme(const char name[], const char path[]);
 static void set_colorscheme(char *names[], int count);
-static int cmdpalettefzf_cmd(const cmd_info_t *cmd_info);
 static int command_cmd(const cmd_info_t *cmd_info);
 static int compare_cmd(const cmd_info_t *cmd_info);
 static int copen_cmd(const cmd_info_t *cmd_info);
@@ -200,7 +199,6 @@ static int set_view_filter(view_t *view, const char filter[],
 		const char fallback[], int invert);
 static int get_filter_inversion_state(const cmd_info_t *cmd_info);
 static int find_cmd(const cmd_info_t *cmd_info);
-static int findfzf_cmd(const cmd_info_t *cmd_info);
 static int finish_cmd(const cmd_info_t *cmd_info);
 static int goto_path_cmd(const cmd_info_t *cmd_info);
 static int grep_cmd(const cmd_info_t *cmd_info);
@@ -467,10 +465,6 @@ const cmd_add_t cmds_list[] = {
 	  .descr = "display/define :commands",
 	  .flags = HAS_EMARK,
 	  .handler = &command_cmd,     .min_args = 0,   .max_args = NOT_DEF, },
-	{ .name = "cmdpalettefzf",     .abbr = NULL,    .id = -1,
-	  .descr = "display command palette via fzf",
-	  .flags = 0,
-	  .handler = &cmdpalettefzf_cmd, .min_args = 0, .max_args = 0, },
 	{ .name = "compare",           .abbr = NULL,    .id = COM_COMPARE,
 	  .descr = "compare directories in two panes",
 	  .flags = HAS_EMARK | HAS_COMMENT,
@@ -591,10 +585,6 @@ const cmd_add_t cmds_list[] = {
 	  .flags = HAS_RANGE | HAS_QUOTED_ARGS | HAS_MACROS_FOR_CMD
 	         | HAS_SELECTION_SCOPE,
 	  .handler = &find_cmd,        .min_args = 0,   .max_args = NOT_DEF, },
-	{ .name = "findfzf",           .abbr = NULL,    .id = -1,
-	  .descr = "find files through fzf",
-	  .flags = 0,
-	  .handler = &findfzf_cmd,     .min_args = 0,   .max_args = 0, },
 	{ .name = "finish",            .abbr = "fini",  .id = -1,
 	  .descr = "stop script processing",
 	  .flags = HAS_COMMENT,
@@ -1903,18 +1893,16 @@ set_colorscheme(char *names[], int count)
 }
 
 static int
-cmdpalettefzf_cmd(const cmd_info_t *cmd_info)
-{
-	(void)cmd_info;
-
-	cmds_preserve_selection();
-	return show_cmd_palette_fzf(curr_view) != 0;
-}
-
-static int
 command_cmd(const cmd_info_t *cmd_info)
 {
 	char *desc;
+
+	if(cmd_info->argc < 2 && cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_cmd_palette_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : NULL) != 0;
+	}
 
 	if(cmd_info->argc == 0)
 	{
@@ -2702,16 +2690,14 @@ set_view_filter(view_t *view, const char filter[], const char fallback[],
 static int
 find_cmd(const cmd_info_t *cmd_info)
 {
+	if(cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_find_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : NULL) != 0;
+	}
+
 	return act_find(cmd_info->args, cmd_info->argc, cmd_info->argv);
-}
-
-static int
-findfzf_cmd(const cmd_info_t *cmd_info)
-{
-	(void)cmd_info;
-
-	cmds_preserve_selection();
-	return show_find_fzf(curr_view) != 0;
 }
 
 static int
@@ -2763,6 +2749,13 @@ goto_path_cmd(const cmd_info_t *cmd_info)
 static int
 grep_cmd(const cmd_info_t *cmd_info)
 {
+	if(cfg.fzf)
+	{
+		cmds_preserve_selection();
+		return show_grep_fzf(curr_view,
+				cmd_info->argc > 0 ? cmd_info->args : ".") != 0;
+	}
+
 	return act_grep(cmd_info->argc > 0 ? cmd_info->args : NULL, cmd_info->emark);
 }
 
